@@ -114,3 +114,24 @@
   > 本地分支和远程分支关联：git branch --set-upstream branch-name origin/branch-name
   >
   > 从远程抓取分支：git pull
+
+---
+
+## 标签管理
+
+* 创建标签
+
+  > 1. 切换到需打tag的分支上：git checkout <name>
+  > 2. 打上标签：git tag <tag-name>
+  > 3. 指定commit打tag：git tag <tag-name> <commit-id>
+  > 4. 制定标签信息：git tag -a <tag-name> -m ""
+
+* 操作标签
+
+  > 删除标签：git tag -d <tag-name>
+  >
+  > 推送某标签：git push origin <tag-name>
+  >
+  > 一次推送所有本地标签：git push origin --tags
+  >
+  > 删除远程标签：git tag -d <tag-name> 和git push origin:refs/tags/v0.9
