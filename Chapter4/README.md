@@ -6,6 +6,9 @@
 2. torch.nn.Module
 3. nn.Parameter
 4. autograd.Function
+5. torch.optim(存放各种优化函数)
+6. torchvision.dataset
+7. torchvision.transforms
 
 ---
 
@@ -59,10 +62,6 @@
    #output[1]:torch.Size([6])
    ```
 
-   
-
-
-
 ---
 
 ## 网络的输入
@@ -102,12 +101,12 @@
    
    ```
 
-   ---
+---
 
-   ## 反向传播（Backprop）
+## 反向传播（Backprop）
 
    1. 代码实例
-
+   
       ```python
       net.zero_grad()
       print('conv1.bias.grad before backward')
@@ -118,5 +117,57 @@
       print(net.conv1.bias.grad)
       ```
 
-      
+---
+
+## 修改权重（update the weights）
+
+1. 代码实例
+
+   ```java
+   import torch.optim as optim
+   optimizer=optim.SGD(net.parameters(),lr=0.01)
+   
+   optimizer.zero_grad()
+   output=net(input)
+   loss=criterion(output,target)
+   loss.backward()
+   optimizer.step()
+   ```
+
+---
+
+## 数据相关（What about data?)
+
+1. 不同数据集采用的包
+
+   > Images:Pillow、OpenCV
+   >
+   > audio:scipy、librosa
+   >
+   > test:raw python 、Cython
+
+---
+
+## 如何训练一个图片分类(Training an image classifier)
+
+1. 加载并且标准化训练数据集和测试数据集，通过**torchvision(返回的图片格式时PIL格式）**
+2. 定义相关网络结构
+3. 定义一个损失函数以及优化函数
+4. 在数据集上训练一个网络
+5. 在测试数据集上测试网络
+
+---
+
+## 在显卡上运行（Training on GPU）
+
+1. 代码实例
+
+   ```python
+   device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+   print(device)
+   ```
+
+---
+
+## 数据加载和增强
 
