@@ -134,7 +134,7 @@
             <!--配置后缀名-->
             <property name="suffix" value=".jsp"></property>
         </bean>
-        <!--开启SpringMV框架注解的支持-->
+        <!--开启SpringMV框架注解的支持:开启这个还默认配置了适配器、映射器-->
         <mvc:annotation-driven></mvc:annotation-driven>
     
     </beans>
@@ -168,7 +168,79 @@
     </web-app>
     
     ```
-
+* 注解
+  * @RequestMapping(path="")
+    ```java
+    /**
+    *作为路径映射。可以放方法或者类上
+    *属性：method请求方法
+          paramg规定传递参数
+    */
+    package com.zjs.controller;
+    
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    
+    @Controller
+    @RequestMapping(path = "/user")
+    public class HelloController {
+    
+        @RequestMapping(value = "/hello")
+        public  String sayHello()
+        {
+            System.out.println("hello StringMVC");
+            return "success";
+        }
+    }
+    
+    ```
+* 参数绑定
+  
+  * 通过接收参数名和请求当中传递参数名相同可以获得
+  
+  * 引用类型的封装
+  
+    ```jsp
+    <%@page contentType="text/html; charset=UTF-8" %>
+    <html>
+    <body>
+    <h2>Hello World!</h2>
+    <form action="/user/hello" method="post">
+        名称:<input type="text" name="name"/>
+        金额：<input type="text" name="money"/>
+        <input type="submit" value="提交"/>
+    </form>
+    </body>
+    </html>
+    
+    ```
+  
+    
+  
+    ```java
+    
+    
+    package com.zjs.controller;
+    
+    import com.zjs.bean.account;
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    
+    @Controller
+    @RequestMapping(path = "/user")
+    public class HelloController {
+    
+        @RequestMapping(value = "/hello")
+        public  String sayHello(account account)
+        {
+            System.out.println(account.toString());
+            return "success";
+        }
+    }
+    
+    ```
+  
+    
 ## 2.业务层（spring框架）
 
 ## 3.持久层(Mybatis)
