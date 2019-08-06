@@ -14,7 +14,7 @@
 
 * 感知器实现
 
-  ```py
+  ```python
   import pandas as pd
   import numpy as np
   class Perception(object):
