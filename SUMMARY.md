@@ -11,4 +11,6 @@
     * [第2节：SpringMVC](Chapter3/SpringMVC.md)
 * [第四章:Pytorch](Chapter4/README.md)
 * [第五章:计算机视觉](Chapter5/CV.md)
+* [第六章:python](Chapter6/README.md)
+* [第七章:前端](Chapter7/README.md)
 

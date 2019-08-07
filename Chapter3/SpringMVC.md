@@ -11,6 +11,7 @@
   > V:view,视图层
   >
   > C:controll,控制层
+  
 * 配置步骤
   * 依赖导入
     ```xml
@@ -168,6 +169,7 @@
     </web-app>
     
     ```
+  
 * 注解
   * @RequestMapping(path="")
     ```java
@@ -194,6 +196,7 @@
     }
     
     ```
+  
 * 参数绑定
   
   * 通过接收参数名和请求当中传递参数名相同可以获得
@@ -213,11 +216,33 @@
     </body>
     </html>
     
-    ```
-  
+    <!--map或者list类型-->
+  <%@page contentType="text/html; charset=UTF-8" %>
+    <html>
+  <body>
+    <h2>Hello World!</h2>
+    <form action="/user/hello" method="post">
+        名称:<input type="text" name="name"/>
+        金额：<input type="text" name="money"/>
     
-  
-    ```java
+        用户名称：<input type="text" name="user.username"/>
+        用户年龄：<input type="text" name="user.age"/>
+    
+        账号1用户名称:<input type="text" name="list[0].username"/>
+        账号1用户年龄:<input type="text" name="list[0].age"/>
+        账号2用户名称：<input type="text" name="map[one].username">
+        账号2用户年龄:<input type="text" name="map[one].age">
+        <input type="submit" value="提交"/>
+    </form>
+    </body>
+    </html>
+    
+    
+    ```
+    
+    
+    
+  ```java
     
     
     package com.zjs.controller;
@@ -238,9 +263,235 @@
         }
     }
     
+  ```
+
+* 自定义类型转换器
+
+  * 实现方法
+
+    ```java
+    package com.zjs.utils;
+    
+    
+    import org.springframework.core.convert.converter.Converter;
+    
+    import java.text.DateFormat;
+    import java.text.ParseException;
+    import java.text.SimpleDateFormat;
+    import java.util.Date;
+    
+    /**
+     * 字符串转换为日期
+     */
+    public class StringToDataConvert implements Converter<String,Date> {
+        @Override
+        public Date convert(String source) {
+            if(source==null)
+            {
+                throw new RuntimeException("请你传入数据");
+            }
+            DateFormat dateFormat=new SimpleDateFormat("yyyy-MM-dd");
+            try {
+    
+                return dateFormat.parse(source);
+            } catch (Exception e) {
+                throw new RuntimeException("转换错误");
+            }
+        }
+    }
+    
+    ```
+  * xml配置
+    ```xml
+    
+     <!--配置自定义转换器-->
+        <bean id="conversionService" class="org.springframework.context.support.ConversionServiceFactoryBean">
+        <property name="converters">
+                <set>
+                    <bean class="com.zjs.utils.StringToDataConvert"></bean>
+                </set>
+            </property>
+        </bean>
+        <!--开启SpringMV框架注解的支持-->
+        <mvc:annotation-driven conversion-service="conversionService"></mvc:annotation-driven>
+    
+    
+    
+    
+    ```
+
+
+
+### 1.2 Servlet原生API
+
+* 注解
+
+  * @RequestParam
+
+    ```java
+    package com.zjs.controller;
+    
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    
+    @Controller
+    @RequestMapping(value = "/annotation")
+    public class AnnotationController {
+    
+        @RequestMapping(value = "/user")
+        public void Annotation(@RequestParam("name") String username)
+        {
+            System.out.println(username);
+        }
+    }
+     
+    ```
+    
+  * @RequestBody
+  
+    ```java
+    //采用Key-values形式，适用于post请求
     ```
   
+  * PathVariable
     
+    ```java
+    @RequestMapping("/testPahtVariable/{id}")
+    public String testPathVariable(@PathVariable(name="id") String id)
+    {
+    System.out.println(id)
+    }
+    ```
+    
+  * @RequestHeader
+    
+    ```java
+    //用于获取头文件
+    ```
+
+  * CookieValue
+    ```java
+    //用于获取cookie值
+    ```
+
+* 响应
+
+  * 返回值是void
+
+    ```java
+    //编写请求转发的程序
+    
+    request.getRequestDispatcher("路径").forward(request,response)
+    //重定向
+       response.sendRedirect(request.getContestPath()+"/index.jsp")
+    //设置中文乱码
+        response.setCharacterEncoding("utf-8")
+        response.setContenttType("text/html;charset=utf-8")
+    //直接进行响应
+    response.getWriter().print("hello")    
+    ```
+
+  * ModelView返回值
+  
+    ```java
+       @RequestMapping(value = "/test")
+        public ModelAndView modelAndView()
+        {
+            ModelAndView mv=new ModelAndView();
+            User user=new User();
+            user.setAge(10);
+            user.setUsername("zjs");
+            mv.addObject("user",user);
+            mv.setViewName("success");
+            return mv;
+        }
+    ```
+  
+* 静态资源过滤
+
+  ```xml
+      <!--前端控制器，那些静态资源不拦截-->
+      <mvc:resources location="/js/" mapping="/js/**"></mvc:resources>
+  ```
+
+* json与JavaBean相互转换
+
+  ```xml
+  <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.9.0</version>
+  </dependency>
+  <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.9.0</version>
+  </dependency>
+  <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>2.9.0</version>
+  </dependency
+  
+  ```
+
+* 前端jsp编写ajax
+
+  ```js
+  <script>
+  // 页面加载，绑定单击事件
+  $(function () {
+      $("#btn").click(function () {
+          // 发送ajax请求
+          $.ajax({
+              // 配置请求参数
+              url: "user/testAjax",
+              contentType: "application/json;charset=UTF-8",
+              dataType: "json",
+              type: "post",
+              // 请求的json数据
+              data: '{"username":"myname","password":"mypassowrd","age":30}',
+              // 回调函数,处理服务器返回的数据returnData
+              success: function (returnData) {
+                  // 我们假定服务器返回的是一个user对象,将其输出在控制台上
+                  console.log(returnData);            }
+          });
+      });
+  });
+  </script>
+  
+  ```
+
+* 控制器响应json数据
+
+  ```js
+  @Controller
+  @RequestMapping("/user")
+  public class UserController {
+      @RequestMapping("/testAjax")
+      @ResponseBody
+      public User testAjax(@RequestBody User user) {
+  
+          System.out.println(user);
+          
+          // 将user对象返回给前端页面
+          return user;
+      }
+  }
+  
+  ```
+
+  
+
+
+
+### 1.3.文件上传
+
+
+
+
+
 ## 2.业务层（spring框架）
 
 ## 3.持久层(Mybatis)
