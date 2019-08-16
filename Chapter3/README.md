@@ -377,9 +377,361 @@ public class ThreadJoin {
 
 ```
 
+## Hook
 
+* 获取线程运行时异常
 
+  ```java
+  package MultiThread.Chapter7;
+  
+  import java.util.concurrent.TimeUnit;
+  
+  //没有对thread指定handler的时候就去寻找默认的handler，如果默认的也没有，就去找group的uncaughtException方法。
+  public class EmptyExceptionHandler {
+  
+      public static void main(String[] args) {
+          ThreadGroup maingroup=Thread.currentThread().getThreadGroup();
+          System.out.println(maingroup.getName());
+          System.out.println(maingroup.getParent());
+          System.out.println(maingroup.getParent().getParent());
+          Thread thread=new Thread(maingroup,()->
+          {
+              try {
+                  TimeUnit.SECONDS.sleep(2);
+              } catch (InterruptedException e) {
+                  e.printStackTrace();
+              }
+              System.out.println(1/0);
+          },"test-thread");
+          thread.start();
+      }
+  }
+  
+  ```
 
+* 注入hook线程
+
+  ```java
+  package MultiThread.Chapter7;
+  
+  import java.util.concurrent.TimeUnit;
+  
+  public class ThreadHook {
+      public static void main(String[] args) {
+          //为应用程序注入钩子线程
+          Runtime.getRuntime().addShutdownHook(new Thread()
+          {
+              @Override
+              public void run() {
+                  System.out.println("The hook thread 1 is running");
+                  try {
+                      TimeUnit.SECONDS.sleep(1);
+                  } catch (InterruptedException e) {
+                      e.printStackTrace();
+                  }
+                  System.out.println("The hook thread 1 will exit");
+              }
+          });
+  
+          Runtime.getRuntime().addShutdownHook(new Thread()
+          {
+              @Override
+              public void run() {
+                  System.out.println("The hook thread 2 is running");
+                  try {
+                      TimeUnit.SECONDS.sleep(1);
+                  } catch (InterruptedException e) {
+                      e.printStackTrace();
+                  }
+                  System.out.println("The hook thread 2 will exit");
+              }
+          });
+          System.out.println("The program will is stoping");
+      }
+  }
+  
+  ```
+
+* hook实战
+
+  ```java
+  package MultiThread.Chapter7;
+  
+  
+  
+  
+  import java.io.IOException;
+  import java.nio.file.Files;
+  import java.nio.file.Path;
+  import java.nio.file.Paths;
+  import java.nio.file.attribute.PosixFilePermission;
+  import java.nio.file.attribute.PosixFilePermissions;
+  import java.util.Set;
+  import java.util.concurrent.TimeUnit;
+  
+  public class PreventDuplicated {
+      private final static String LOCK_PATH="";
+      private final static String Lock_FILE="1.lock";
+      private final static String PERMISSIONS="rw-------";
+  
+      public static void main(String[] args) throws IOException {
+          //检查文件是否存在
+          checkRunning();
+          Runtime.getRuntime().addShutdownHook(new Thread(()->
+          {
+              System.out.println("The program received kill SIGNAL");
+              getLockFile().toFile().delete();
+          }));
+          for(;;)
+          {
+              try {
+                  TimeUnit.MILLISECONDS.sleep(1);
+              } catch (InterruptedException e) {
+                  e.printStackTrace();
+              }
+          }
+  
+      }
+  
+      private static void checkRunning() throws IOException {
+          Path path=getLockFile();
+          if(path.toFile().exists())
+          {
+              throw new RuntimeException("The program already running");
+          }
+  
+          Files.createFile(path);
+      }
+      private static Path getLockFile()
+      {
+          return Paths.get(LOCK_PATH,Lock_FILE);
+      }
+  }
+  
+  ```
+
+  
+### 类的加载工程
+
+* 类的主动使用
+
+  * 通过new
+
+  ```java
+  //通过new进行初始化
+  ```
+
+  * 通过调用静态变量或者方法
+
+  ```java
+  //2.通过调用静态变量或者方法回到之类的初始化
+  package MultiThread.Chapter9;
+  
+  public class Simple {
+      static {
+          System.out.println("I will be initialized");
+      }
+      public static int x=10;
+  
+      public static void test()
+      {
+          
+      }
+      public static void main(String[] args) {
+          System.out.println(Simple.x);
+      }
+  }
+  
+  ```
+
+  * 通过反射操作
+
+  ```java
+  //3.对某类进行反射操作，也会导致类的初始化
+  ```
+
+  * 通过初始化子类
+
+  ```java
+  //4.初始化子类会导致父类初始化。但是通过子类使用父类的静态变脸或者方法只会导致父类初始化
+  ```
+
+  * 通过执行main函数
+
+  ```java
+  //5.执行main函数所在的类会导致该类的初始化
+  ```
+
+* 类的被动使用
+
+  * 构造某个类的数组时并不会导致初始化
+
+  ```java
+  package MultiThread.Chapter9;
+  //被动使用不会导致类的加载和初始化
+  public class ActiveLoadTest {
+      public static void main(String[] args) {
+         Simple []simples=new Simple[10];
+          System.out.println(simples.length);
+      }
+  }
+  
+  ```
+
+  * 引用类的静态常量的时候
+
+  ```java
+  public class GlobalConstants
+  {
+  public final static int MAX=1000;
+  }
+  ```
+
+* 类的加载过程
+
+  * 编译为class文件
+  
+  * 加载class文件进内存
+  
+  * 连接阶段
+    * 验证
+    * 准备
+    * 解析
+    
+  * 初始化
+  
+
+### JVM类加载器
+
+* JVM内置三大类加载器
+
+  * 根类加载器
+
+    ```java
+    package MultiThread.Chapter10;
+    
+    public class BootstrapClassLoader {
+        public static void main(String[] args) {
+            System.out.println("Bootstrap:"+String.class.getClassLoader());
+            System.out.println(System.getProperty("sun.boot.class.path"));
+        }
+    }
+    
+    ```
+
+  * 扩展类加载器
+
+    ```java
+    package MultiThread.Chapter10;
+    
+    public class ExtClassLoader {
+        public static void main(String[] args) {
+            System.out.println(System.getProperty("java.ext.dirs"));
+        }
+    }
+    
+    ```
+
+  * 系统类加载器
+
+    ```java
+    package MultiThread.Chapter10;
+    
+    public class ApplicationClassLoader {
+        public static void main(String[] args) {
+            System.out.println(System.getProperty("java.class.path"));
+            System.out.println(ApplicationClassLoader.class.getClassLoader());
+        }
+    }
+    
+    ```
+
+    
+
+* 自定义类加载器
+
+  ```java
+  package MultiThread.Chapter10;
+  
+  import java.io.ByteArrayOutputStream;
+  import java.io.IOException;
+  import java.nio.file.Files;
+  import java.nio.file.Path;
+  import java.nio.file.Paths;
+  
+  public class MyClassLoader extends ClassLoader {
+      private final static Path DEFAULT_CLASS_DIR=Paths.get("d:","classloader");
+      private final Path classDir;
+      //使用默认的class路径
+      public MyClassLoader()
+      {
+          super();
+          this.classDir=DEFAULT_CLASS_DIR;
+      }
+      //允许传入指定路径的class路径
+      public MyClassLoader(String classDir)
+      {
+          super();
+          this.classDir=Paths.get(classDir);
+      }
+  
+      //指定class路径的同事，指定父类加载器
+      public MyClassLoader(String classDir,ClassLoader parent)
+      {
+          super(parent);
+          this.classDir=Paths.get(classDir);
+      }
+  
+      @Override
+      protected Class<?> findClass(String name) throws ClassNotFoundException {
+          //读取class的二进制数据
+          byte[] classbytes=this.readClassBytes(name);
+          if(classbytes==null ||classbytes.length==0)
+          {
+              throw new ClassNotFoundException("Can not load the class"+ name);
+          }
+          //调用defineClass定义class
+  
+          return this.defineClass(name,classbytes,0,classbytes.length);
+      }
+  
+      //将class文件读入内存
+      private byte[] readClassBytes(String name) throws ClassNotFoundException {
+          //将包名分隔符转换为文件路径分隔符
+          String classPath=name.replace(".","/");
+          Path classFullPath=classDir.resolve(Paths.get(classPath+".class"));
+          if(!classFullPath.toFile().exists())
+              throw new ClassNotFoundException("The class"+name+" not found.");
+          try(ByteArrayOutputStream baos=new ByteArrayOutputStream())
+          {
+              Files.copy(classFullPath,baos);
+              return baos.toByteArray();
+          }catch (IOException e)
+          {
+              throw new ClassNotFoundException("Load the class"+ name+" occur error.",e);
+          }
+  
+      }
+  
+      @Override
+      public String toString() {
+          return "My ClassLoader";
+      }
+  }
+  
+  ```
+
+* 双亲委托机制
+
+  * 工作流程
+
+    >1.当前ClassLoader首先从自己已经加载的类中查询是否此类已经加载，如果已经加载则直接返回原来已经加载的类。
+    >
+    >每个类加载器都有自己的加载缓存，当一个类被加载了以后就会放入缓存，等下次加载的时候就可以直接返回了。
+    >
+    >2.当前classLoader的缓存中没有找到被加载的类的时候，委托父类加载器去加载，父类加载器采用同样的策略，首先查看自己的缓存，然后委托父类的父类去加载，一直到bootstrp ClassLoader.
+    >
+    >3.当所有的父类加载器都没有加载的时候，再由当前的类加载器加载，并将其放入它自己的缓存中，以便下次有加载请求的时候直接返回。
 
 ## 网络编程
 
