@@ -733,6 +733,213 @@ public class ThreadJoin {
     >
     >3.当所有的父类加载器都没有加载的时候，再由当前的类加载器加载，并将其放入它自己的缓存中，以便下次有加载请求的时候直接返回。
 
+  * 破坏双委托机制
+  
+    ```java
+    package MultiThread.Chapter10;
+    
+    import java.io.ByteArrayOutputStream;
+    import java.io.IOException;
+    import java.nio.file.Files;
+    import java.nio.file.Path;
+    import java.nio.file.Paths;
+    
+    public class BrokerDelegateClassLoader extends ClassLoader {
+        private final static Path DEFAULT_CLASS_DIR=Paths.get("d:","classloader");
+        private final Path classDir;
+        //使用默认的class路径
+        public BrokerDelegateClassLoader()
+        {
+            super();
+            this.classDir=DEFAULT_CLASS_DIR;
+        }
+        //允许传入指定路径的class路径
+        public BrokerDelegateClassLoader(String classDir)
+        {
+            super();
+            this.classDir=Paths.get(classDir);
+        }
+    
+        //指定class路径的同事，指定父类加载器
+        public BrokerDelegateClassLoader(String classDir,ClassLoader parent)
+        {
+            super(parent);
+            this.classDir=Paths.get(classDir);
+        }
+    
+        @Override
+        protected Class<?> findClass(String name) throws ClassNotFoundException {
+            //读取class的二进制数据
+            byte[] classbytes=this.readClassBytes(name);
+            if(classbytes==null ||classbytes.length==0)
+            {
+                throw new ClassNotFoundException("Can not load the class"+ name);
+            }
+            //调用defineClass定义class
+    
+            return this.defineClass(name,classbytes,0,classbytes.length);
+        }
+    
+        //将class文件读入内存
+        private byte[] readClassBytes(String name) throws ClassNotFoundException {
+            //将包名分隔符转换为文件路径分隔符
+            String classPath=name.replace(".","/");
+            Path classFullPath=classDir.resolve(Paths.get(classPath+".class"));
+            if(!classFullPath.toFile().exists())
+                throw new ClassNotFoundException("The class"+name+" not found.");
+            try(ByteArrayOutputStream baos=new ByteArrayOutputStream())
+            {
+                Files.copy(classFullPath,baos);
+                return baos.toByteArray();
+            }catch (IOException e)
+            {
+                throw new ClassNotFoundException("Load the class"+ name+" occur error.",e);
+            }
+    
+        }
+    
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            //根据类的全路径名称进行加锁，确定每一个类再多线程中只被加载一次
+            synchronized (getClassLoadingLock(name))
+            {
+                //到已加载类的缓存中查看该类是否也被加载，如果时则返回
+                Class<?> klass=findLoadedClass(name);
+                if(klass==null)
+                {
+                    //如果缓存中没有加载该类，并且是以java或者javax开头的类路径，则委托给系统类加载器进行加载
+                    if(name.startsWith("java.") || name.startsWith("javax."))
+                    {
+                        try {
+                            klass=getSystemClassLoader().loadClass(name);
+                        }catch (Exception e)
+                        {
+    
+                        }
+                    }
+                    //如果缓冲中没有，且暴不是以java或者javax开头的，则尝试委托给自定义的类加载器进行加载
+                    else {
+                        try {
+                            klass=this.findClass(name);
+                        }catch (ClassNotFoundException e)
+                        {
+    
+                        }
+                        //如果自定义加载器不能完成类的加载，则委托给父类加载器进行加载或者系统加载器进行加载
+                        if(klass==null)
+                        {
+                            if(getParent()!=null)
+                            {
+                                klass=getParent().loadClass(name);
+                            }
+                            else
+                            {
+                                klass=getSystemClassLoader().loadClass(name);
+                            }
+                        }
+                    }
+                }
+                //经过若干次尝试后，还是没有完成对类的加载，则抛出无法加载的异常
+                if(null==klass)
+                {
+                    throw new ClassNotFoundException("The class "+name+" not found.");
+                }
+                if(resolve)
+                {
+                    resolveClass(klass);
+                }
+                return klass;
+    
+            }
+        }
+    
+        @Override
+        public String toString() {
+            return "My ClassLoader";
+        }
+    }
+    
+    ```
+
+* 类加载器命名空间、运行时包、类的卸载
+
+  * 类加载器命名空间（每一个类加载器实例都有各自的命名空间）
+
+    > 1.不同类加载器加载同一个class会产生不同对象
+    >
+    > 2.相同类加载器的不同实例加载同一个class也会产生不同对象
+    >
+    > **同一个class实例同一个类加载器命名空间之下才是唯一的**
+
+  * 运行时包（由类加载的命名空间和类的全限定名称共同组成）
+  
+    > 比如Test运行时包如下所示：
+    >
+    > BootstrapClassLoader.ExtClassLoader.AppClassloader.MyClassLoader.com.wangwenjun.cuncurrent.chapter10.Test
+
+  * 初始类加载器
+  
+    > 在类的加载工程中，所有参与的类加载器，即使没有亲自加载过该类，也都会标识为该类的初始类加载器。并且把该类放在该类加载维护的列表中。
+
+  * 类的卸载
+  
+    > Class满足以下三个条件才会被GC回收：
+    >
+    > - 该类所有的实例都被GC，比如Simple.class的所有实例都被回收掉
+    > - 加载该类的ClassLoader实例被回收
+    > - 该类的class实例没有在其他地方被引用
+
+
+
+### Volatile
+
+* 初始Volatile关键词
+
+  > 该关键词只能修饰类变量和实例变量，对于方法参数、局部变量以及实例常量，类常量都不能进行修饰。
+
+* 并发编程的三个重要特性
+
+  * 原子性
+
+    > 一次的操作或者多次操作中，要么所有操作都执行，要吗都不执行
+    >
+    > volatile不保证数据的原子性，synchronized关键词保证
+
+  * 有序性
+  
+    > 程序代码在执行过程中的先后顺序
+
+  * 可见性
+  
+    > 当一个线程对共享变量进行了修改，那么另外的线程可以立即看到修改后的最新值。
+
+* JMM如何保证三大特性
+
+  * JMM与原子性（volatile不保证）
+
+    > JMM只保证了基本读取和复制的原子性操作
+
+  * JMM与可见性(volatile保证)
+  
+    >1.使用关键词volatile
+    >
+    >2.使用synchronized
+    >
+    >3.通过JUC提供的显示锁LOCK
+
+  * JMM与有序性(volatile可保证)
+
+
+
+
+
+
+
+
+
+
+
+
 ## 网络编程
 
 * 网络编程、IP地址、端口
