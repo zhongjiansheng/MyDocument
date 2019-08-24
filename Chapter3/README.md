@@ -1,4 +1,4 @@
-# 第三章:Java
+第三章:Java
 
 #  *中级知识*
 
@@ -929,16 +929,478 @@ public class ThreadJoin {
 
   * JMM与有序性(volatile可保证)
 
+* volatile的使用场景
+
+  * 开关控制利用可见性的特点
+
+  * 状态标记利用顺序性特点
+
+  * Singleton设计模式的double-check也是利用了顺序性特点
+
+* volatile与synchronized的区别
+
+  * 使用上的区别
+
+    > 1.volatile关键词只能用于修饰实列变量或者类变量，不能用于修饰方法以及方法参数和局部变量、常量
+    >
+    > 2.synchronized关键词不能用于对变量的修饰，只能用于方法和语句块
+    >
+    > 3.volatile修饰的变量可以是null，synchronized关键词同步语句块的monitor对象不能为null
+    
+  * 对原子性的保证
+  
+    > 1.volatile无法保证原子性
+    >
+    > 2.synchronized是一种排他机制，所以synchronized可以保证原子性
+  
+  * 对可见性的保证
+  
+    > 1.两者均可以保证共享资源在多线程间的可见性，但是实现机制完全不同
+    >
+    > 2.synchronized借助于JVM指令的monitor enter和monitor exit通过排他的方式使得同步代码串行化，在monitor exit时所有共享资源都会刷星到主内存中
+
+  * 对有序性的保证
+  
+    > 1.volatile关键词禁止JVM编译器以及处理器对其进行重排序
+    >
+    > 2.synchronized对于所修饰的代码块不能保证有序性
+
+  * 其他
+    > 1.volatile不会使线程陷入阻塞
+    > 2.synchronized会使线程进入阻塞状态
+
+
+
+### 锁的概述
+
+* 乐观锁和悲观锁
+
+  * 悲观锁
+
+    > 排他性
+
+  * 乐观锁
+    
+    > 更新的时候具有排他性
+* 公平锁与非公平锁
+  * 公平锁
+    
+    > 按照线程请求锁的时间早晚来决定
+    >
+    > ```java
+    > ReentrantLock pairLock=new ReentrantLock(true)
+    > ```
+  * 非公平锁
+    
+    > ```java
+    > ReentrantLock pairLock=new ReentrantLock(false)
+    > ```
+    >
+    > 在没有公平性需求的前提下尽量使用非公平锁，因为公平锁会带来性能开销 。
+    >
+
+* 独占锁与共享锁
+
+  * 独占锁
+
+    > 保证任何时候都只有一个线程能得到锁。ReentrantLock就是以独占方式实现
+
+  * 共享锁
+    
+    > 可以同时由多个线程持有。ReadWriteLock读写锁就是
+
+
+
+* 可重入锁
+
+  > 当一个线程要获取一个被其他线程持有的独占锁时，该线程会被阻塞，那么当一个线程再次获取它自己己经获取的锁时是否会被阻塞呢？如果不被阻塞，那么我们说该锁是可重入的，也就是只要该线程获取了该锁，那么可以无限次数（在高级篇中我们将知道，严格来说是有限次数）地进入被该锁锁住的代码 。 
+
+* 自旋锁
+
+  > 如果发现锁已经被其他线程占有，它不马上阻塞自己，在不放弃 CPU 使用权的情况下，多次尝试获取（默认次数是 10，可以使用 －XX :PreBlockSpinsh 参数设置该值），很有可能在后面几次尝试中其他线程己经释放了锁 。 如果尝试指定的次数后仍没有获取到锁则当前线程才会被阻塞挂起 。  
+
+
+
+### ThreadLocalRandom
+
+* random
+
+  > 对于随机中子数采用的是原子性变量，所以在更新中子数的时候只有一个线程可以进行，其他线程自旋，性能低
+
+* ThreadLocalRandom
+
+  ```java
+  //类似于
+  package com.zjs.Chapter1.Chapter3;
+  
+  import java.util.Random;
+  import java.util.concurrent.ThreadLocalRandom;
+  
+  public class RandomTest {
+     // static final ThreadLocalRandom random=ThreadLocalRandom.current();
+      public static void main(String[] args) {
+  
+          for(int i=0;i<10;i++)
+          {
+              new Thread()
+              {
+                  @Override
+                  public void run() {
+                      System.out.println(Thread.currentThread().getName()+": "+ThreadLocalRandom.current().nextInt(100));
+                  }
+              }.start();
+          }
+      }
+  }
+  
+  ```
+
+  
+
+
+
+### CAS操作
 
 
 
 
 
+## 设计模式
 
+### 七种单例设计模式
 
+* 饿汉式
 
+  ```java
+  package com.zjs.Chapter1.Chapter14;
+  
+  public final class SingLeton {
+      //实列变量
+      private byte[] data=new byte[1024];
+      private static SingLeton singLeton=new SingLeton();
+      private SingLeton()
+      {}
+  
+      public SingLeton getSingLeton()
+      {
+          return singLeton;
+      }
+  }
+  
+  ```
 
+* 懒汉式
 
+  ```java
+  package com.zjs.Chapter1.Chapter14;
+  //在多线程的情况下不能保证单例的唯一性
+  public class LazySingLeton {
+      private byte[] data=new byte[1024];
+      private static LazySingLeton singLeton=null;
+      private LazySingLeton()
+      {}
+      public static LazySingLeton getLazySingLeton()
+      {
+          if(singLeton==null) {
+              singLeton=new LazySingLeton();
+          }
+          return singLeton;
+      }
+  }
+  
+  ```
+
+* 懒汉式+同步方法
+
+  ```java
+  package com.zjs.Chapter1.Chapter14;
+  
+  public class LazySingLeton {
+      private byte[] data=new byte[1024];
+      private static LazySingLeton singLeton=null;
+      private LazySingLeton()
+      {}
+      //加入Synchronized方法同步控制，每次只能有一个线程能够进入,但是性能低下
+      public static synchronized LazySingLeton getLazySingLeton()
+      {
+          if(singLeton==null) {
+              singLeton=new LazySingLeton();
+          }
+          return singLeton;
+      }
+  }
+  
+  ```
+
+* double-check
+
+  ```java
+  package com.zjs.Chapter1.Chapter14;
+  
+  import java.net.Socket;
+  import java.sql.Connection;
+  
+  public class Double_Check {
+      private byte[] data=new byte[1024];
+      private static Double_Check double_check=null;
+      Connection conn;
+      Socket socket;
+      private Double_Check()
+      {
+          this.conn;
+          this.socket  //初始化
+      }
+  
+      public static Double_Check getInstance()
+      {
+          if(double_check==null)
+          {
+              synchronized (Double_Check.class)
+              {
+                  if(double_check==null)
+                  {
+                      double_check=new Double_Check();
+                  }
+  
+              }
+          }
+          return double_check;
+      }
+  
+  
+  }
+  
+  ```
+
+* volatile+checked-check
+
+  ```java
+  //加上volatile
+  private volatile static SingLeton instance=null;
+  ```
+
+* holder单例模式
+
+  ```java
+  package SingleInstanceModel;
+  /**
+   * 在Singleton_4类中并没有instance的静态成员，而是将其放到了静态内部类Holder之中，因此在Singleton类的初始化过程中并不会创建
+   * Singleton的实例，Holder类中定义了Singleton的静态变量，并且直接进行了实例化，当Holder被主动引用的时候则会创建Singleton的实例，
+   * Singleton实例的创建过程在Java程序编译时期收集至<clinit>()方法中，该方法又是同步方法，同步方法可以保证内存的可见性、JVM指令的顺序性和原子性
+   * Holder方式的单例设计是最好的设计之一，也是目前使用比较广的设计之一。
+   * */
+  
+  /**
+   * Created by JYM on 2019/1/8	
+   * 单例模式：Holder方式
+   * Holder的方式完全是借助了类加载的特点。
+   * */
+  
+  //final 不允许被继承
+  public final class Singleton_4
+  {
+      //实例变量
+      private byte[] data = new byte[1024];
+  
+      private Singleton_4()
+      {}
+  
+      //在静态内部类中持有Singleton的实例，并且可被直接初始化；
+      private static class Holder
+      {
+          private static Singleton_4 instance = new Singleton_4();
+      }
+  
+      //调用getInstance方法，事实上是获得Holder的instance静态属性
+      public static Singleton_4 getInstance()
+      {
+          return Holder.instance;
+      }
+  }
+  
+  ```
+
+* Enum单例模式
+
+  ```java
+  package com.zjs.Chapter1.Chapter14;
+  
+  public enum  EnumSingLeton {
+      INSTANCE;
+      private byte[] data=new byte[1024];
+      EnumSingLeton()
+      {
+          System.out.println("INSTANCE will be initialized immdiately");
+      }
+      public static void methode()
+      {
+          //调用该方法则会主动使用EnumSingLeton,INSTANCE将会被实列化
+      }
+      public static EnumSingLeton getInstance()
+      {
+          return INSTANCE;
+      }
+  
+  }
+  
+  ```
+
+  
+### 监控任务的生命周期
+
+* 观察者模式
+
+  ```java
+  Observable接口
+  public interface Observable {
+      enum Cycle{
+          STARTED,RUNNING,DONE,ERROR
+      }
+      Cycle getCycle();
+      void start();
+      void interrupt();
+  }
+  
+  //该接口用于返回线程的状态。其中枚举类定义了线程的四个状态。start()方法与interrupt()方法用于屏蔽Thread类其他API。
+  
+  //TaskLifecycle接口
+  public interface TaskLifecycle<T> {
+      void onStart(Thread thread);
+      void onRunning(Thread thread);
+      void onFinish(Thread thread ,T result);
+      void onError(Thread thread,Exception e);
+      class EmptyLifecycle<T> implements TaskLifecycle<T>{
+  
+          @Override
+          public void onStart(Thread thread) {
+          }
+  
+          @Override
+          public void onRunning(Thread thread) {
+          }
+  
+          @Override
+          public void onFinish(Thread thread, T result) {
+          }
+  
+          @Override
+          public void onError(Thread thread, Exception e) {
+          }
+      }
+  }
+  //该接口定了了几个在线程不同状态下会被运行的方法。
+  
+  //Task接口
+  public interface Task<T> {
+      T call();
+  
+  //相当于任务类，会被线程所执行。
+  
+  //实现ObservableThread
+  public class ObservableThread<T> extends Thread implements Observable{
+      private  final  TaskLifecycle lifecycle;
+      private  final  Task task;//任务
+      private  Cycle cycle;
+      //构造方法
+      public ObservableThread(Task<T> task){
+          this(new TaskLifecycle.EmptyLifecycle(),task);
+      }
+      //构造方法
+      public ObservableThread(TaskLifecycle lifecycle, Task<T> task) {
+          super();
+          if(task==null)
+              throw  new IllegalArgumentException("The task is required.");
+          this.lifecycle = lifecycle;
+          this.task = task;
+      }
+      //重写run方法
+      public final void run(){
+      	//先是STARTED状态
+          this.update(Cycle.STARTED,null,null);
+          try{
+          	//RUNNING状态
+              this.update(Cycle.RUNNING,null,null);
+              //执行call方法
+              T result = (T) this.task.call();
+              //DONE状态
+              this.update(Cycle.DONE,result,null);
+          }catch (Exception e){
+          //ERROR状态
+              this.update(Cycle.ERROR,null,e);
+          }
+      }
+      @Override
+  	//得到线程状态
+      public Cycle getCycle() {
+          return this.cycle;
+      }
+      //根据线程不同状态来调用TaskLifecycle中定义的方法
+      private  void update(Cycle cycle, T result,Exception e){
+          this.cycle=cycle;
+          if(lifecycle==null){
+              return ;
+          }
+          try{
+              switch (cycle){
+                  case STARTED:
+                      this.lifecycle.onStart(currentThread());break;
+                  case RUNNING:
+                      this.lifecycle.onRunning(currentThread());break;
+                  case DONE:
+                      this.lifecycle.onFinish(currentThread(),result);break;
+                  case ERROR:
+                      this.lifecycle.onError(currentThread(),e);break;
+              }
+          }catch(Exception ex){
+              if(cycle==Cycle.ERROR){
+                  throw  ex;
+              }
+          }
+      }
+  }
+  
+  //run方法会在线程不同的时刻(Observable 提供)通过update方法来调用TaskLifecycle中定义好的方法。并且会在run方法中执行定义的任务接口中的方法Task();
+  
+  //测试
+  public class test {
+      public static void main(String[] args) {
+          //实现一个TaskLifecycle接口 并且重写方法，被线程在不同状态下调用
+          final TaskLifecycle<Integer> lifecycle = new TaskLifecycle.EmptyLifecycle<Integer>() {
+              @Override
+              public void onStart(Thread thread) {
+                  System.out.println("线程准备运行");
+              }
+  
+              @Override
+              public void onRunning(Thread thread) {
+                  System.out.println("线程正在运行");
+              }
+  
+              @Override
+              public void onFinish(Thread thread, Integer result) {
+                  System.out.println("线程运行完成 结果为:"+result);
+              }
+  
+              @Override
+              public void onError(Thread thread, Exception e) {
+                  System.out.println("线程出错");
+              }
+          };
+          
+         Observable o =new ObservableThread<>(lifecycle,()->{
+             int a=0;
+             for(int i=0;i<10;i++){
+                 a+=i;
+             }
+             return a;
+         });
+         o.start();
+      }
+  }
+  
+  ```
+
+  
 
 ## 网络编程
 
