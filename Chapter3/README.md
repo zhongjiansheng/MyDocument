@@ -1,7 +1,3 @@
-第三章:Java
-
-#  *中级知识*
-
 ## Java多线程编程
 
 ### 概念
@@ -1400,25 +1396,98 @@ public class ThreadJoin {
   
   ```
 
+
+### JDK8新增LongAdder和LongAccumulator
+
+```Java
+//LongAdder是LongAccumulator的特列，后者相比前者来说，可以自定义累加规则以及指定初始化值,前者初始化值为0。两者皆采用CAS非阻塞方式。
+package com.zjs.Chapter4;
+
+import java.util.concurrent.atomic.LongAccumulator;
+import java.util.function.LongBinaryOperator;
+
+public class LongAccumulator1{
+    private static LongAccumulator instance = new LongAccumulator(new LongBinaryOperator(){
+        @Override
+        public long applyAsLong(long left, long right) {
+            return (left + right)*2;
+        }
+    },1);
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread t2 = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i=0;i<5;i++) {
+                    instance.accumulate(1);
+                    System.out.println("第"+i+"次的值为"+instance.get());
+                }
+            }
+        }
+        );
+
+        t2.start();
+        t2.join();
+        System.out.println(instance.get());
+    }
+}
+
+```
+
+
+
+### Java并发包中并发List源码剖析
+
+* CopyOnWriteArrayList
+
+  * 介绍
+
+    > CopyOnWriteArrayList 是无界 （list），并把新增的元素添加到新数组。在添加元素时，首先复制了 一个快照，然后在快照上进行添加，而不是直接在原来数组上进行。  
+    
+  * 弱一致性的迭代器
+  
+    > 其他线程的操作对迭代器是不可见的，迭代器的初始化要在子线程操作之前
   
 
-## 网络编程
 
-* 网络编程、IP地址、端口
 
-  1. IP地址：32位，4个字节
+### LockSupport工具类
 
-  2. 端口：计算机之间通过端口进行通信
+* park()
 
-  3. 获取本机地址
+  ```java
+  package com.zjs.Chapter6;
+  
+  import java.util.concurrent.locks.LockSupport;
+  //如果当前线程没有与LockSupport相关的许可证，则会阻塞,且该阻塞
+  public class Test1 {
+      public static void main(String[] args) {
+          System.out.println("begin park");
+          LockSupport.park();
+          System.out.println("end park");
+      }
+  }
+  
+  ```
 
-     > 代码实例
-     >
-     > ```java
-     >  InetAddress inetAddress=InetAddress.getLocalHost();
-     >  System.out.println(inetAddress.getHostName());
-     > ```
-     >
-     > 
+* unpark()
 
-* 网络编程Socket
+  ```java
+  package com.zjs.Chapter6;
+  
+  import java.util.concurrent.locks.LockSupport;
+  
+  public class Test1 {
+      public static void main(String[] args) {
+          System.out.println("begin park");
+          //传入参数的线程没有许可证，则会让他拥有许可证，如果因为park阻塞则会唤醒。如果没有调用park,则下次该线程调用park的时候会立刻返回
+          LockSupport.unpark(Thread.currentThread());
+          LockSupport.park();
+          System.out.println("end park");
+      }
+  }
+  
+  ```
+
+  
+
