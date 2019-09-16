@@ -1489,5 +1489,169 @@ public class LongAccumulator1{
   
   ```
 
+* example
+
+  ```java
+  package MultiThread.Chapter6;
+  
+  import java.util.Queue;
+  import java.util.concurrent.ConcurrentLinkedDeque;
+  import java.util.concurrent.atomic.AtomicBoolean;
+  import java.util.concurrent.locks.LockSupport;
+  
+  public class FIFOMutex {
+      private final AtomicBoolean locked=new AtomicBoolean(false);
+       private Queue<Thread> watiers=new ConcurrentLinkedDeque<Thread>();
+  
+       public void lock()
+       {
+           boolean wasInterrupted=false;
+           Thread current=Thread.currentThread();
+           watiers.add(current);
+           //只有队首的线程可以获取锁
+           while (watiers.peek()!=current || !locked.compareAndSet(false,true))
+           {
+               LockSupport.park(this);
+               if(Thread.interrupted())
+                   wasInterrupted=true;
+           }
+           watiers.remove();
+           if(wasInterrupted)
+               current.interrupt();
+       }
+       public void unlock()
+       {
+           locked.set(false);
+           LockSupport.unpark(watiers.peek());
+       }
+  }
+  
+  ```
+
+### AQS
+
+* 简单介绍
+
+  > AQS是一个用来构建锁和同步器的框架，使用AQS能简单且高效地构造出应用广泛的大量的同步器，比如我们提到的ReentrantLock，Semaphore，其他的诸如ReentrantReadWriteLock，SynchronousQueue,FutureTask等等皆是基于AQS的。当然，我们自己也能利用AQS非常轻松容易地构造出符合我们自己需求的同步器。
+
+* 原理
   
 
+AQS使用一个int成员变量来表示同步状态，通过内置的FIFO队列来完成获取资源线程的排队工作。AQS使用CAS对该同步状态进行原子操作实现对其值的修改。
+
+```java
+  private volatile int state;//共享变量，使用volatile修饰保证线程可见性
+```
+
+  状态信息通过procted类型的getState，setState，compareAndSetState进行操作
+
+  ```java
+  //返回同步状态的当前值
+  protected final int getState() {  
+          return state;
+  }
+   // 设置同步状态的值
+  protected final void setState(int newState) { 
+          state = newState;
+  }
+  //原子地（CAS操作）将同步状态值设置为给定值update如果当前同步状态的值等于expect（期望值）
+  protected final boolean compareAndSetState(int expect, int update) {
+          return unsafe.compareAndSwapInt(this, stateOffset, expect, update);
+  }
+  ```
+
+* 共享方式
+  
+  - **Exclusive**（独占）：只有一个线程能执行，如ReentrantLock。又可分为公平锁和非公平锁：
+  
+  - - 公平锁：按照线程在队列中的排队顺序，先到者先拿到锁
+    - 非公平锁：当线程要获取锁时，无视队列顺序直接去抢锁，谁抢到就是谁的
+  
+  - **Share**（共享）：多个线程可同时执行，如Semaphore/CountDownLatch。Semaphore、CountDownLatCh、 CyclicBarrier、ReadWriteLock 我们都会在后面讲到。
+  
+  ReentrantReadWriteLock 可以看成是组合式，因为ReentrantReadWriteLock也就是读写锁允许多个线程同时对某一资源进行读。
+  
+  不同的自定义同步器争用共享资源的方式也不同。自定义同步器在实现时只需要实现共享资源 state 的获取与释放方式即可，至于具体线程等待队列的维护（如获取资源失败入队/唤醒出队等），AQS已经在上层已经帮我们实现好了。
+  
+* AQS底层使用了模板方法模式
+
+  * 需重写的模板方法如下:
+
+    ```java
+    isHeldExclusively()//该线程是否正在独占资源。只有用到condition才需要去实现它。
+    tryAcquire(int)//独占方式。尝试获取资源，成功则返回true，失败则返回false。
+    tryRelease(int)//独占方式。尝试释放资源，成功则返回true，失败则返回false。
+    tryAcquireShared(int)//共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。
+    tryReleaseShared(int)//共享方式。尝试释放资源，成功则返回true，失败则返回false。
+    ```
+
+* CycliBarrier和CountDownLatch
+
+  | CountDownLatch                                               | CycliBarrier                                                 |
+  | ------------------------------------------------------------ | ------------------------------------------------------------ |
+  | 减计数方式                                                   | 加计数方式                                                   |
+  | 计算为0时释放所有等待的线程                                  | 计数达到指定值时释放所等待线程                               |
+  | 计数为0 时，无法重置                                         | 计数达到指定值，计数置为0重新开始                            |
+  | 调用countDown()方法计数减一，调用await()方法只进行阻塞，对计数没有任何影响 | 调用await()方法计数加1，若加1后的值不等于构造方法的值，则线程阻塞 |
+  | 不可重复利用                                                 | 可重复利用                                                   |
+
+  
+
+* 线程同步的关键是对状态值state 进行操作。根据state 是否属于一个
+  线程，操作s tate 的方式分为独占方式和共享方式
+
+  * 独占方式
+
+    > void acquire()、void acquireInterruptibly()、boolean release()
+  * 共享方式
+    
+    > void acquireShared(int arg) void acquireSharedinterruptibly(int arg）boolean reaseShared(int arg）
+
+
+
+### Java并发包中并发队列原理剖析
+
+* ConcurrentLinkedQueue：无界非阻塞队列
+
+  | 方法名  | 结果               | 是否CAS |
+  | ------- | ------------------ | ------- |
+  | offer   | 末尾添加           | Y       |
+  | add     | 添加               | Y       |
+  | peek    | 获取队首，且不删除 | Y       |
+  | poll    | 获取队首，且删除   | Y       |
+  | size    | 获得大小           | N       |
+  | contain | 判断是否包含       | N       |
+  | remove  | 删除               | Y       |
+
+  ```java
+  package MultiThread.Chapter7;
+  
+  import java.util.concurrent.ConcurrentLinkedQueue;
+  
+  public class ConcurrentLinkedQueueTest {
+      private static ConcurrentLinkedQueue list=new ConcurrentLinkedQueue();
+  
+      public static void main(String[] args) {
+          list.add("a");
+          list.add("b");
+          list.add("c");
+          Thread thread=new Thread(new Runnable() {
+              @Override
+              public void run() {
+                  list.remove("c");
+              }
+          });
+          Thread thread1=new Thread(new Runnable() {
+              @Override
+              public void run() {
+                  System.out.println(list.size());
+              }
+          });
+          thread1.start();
+          thread.start();
+      }
+  }
+  
+  ```
+
+  
