@@ -308,9 +308,9 @@
                     - 形式：@Component(value=" ")/@Component(" ")
             - 作用：用于把当前类对象存入 Spring 容器中
                     - 属性：
-    
+            
                         value : 用于指定 bean 的 id，当我们不写的时候，它的默认值是当前类名，且首字母改小写;当值只有一个的时候可以省略
-    
+            
                 以下三个注解的作用与 @Component 完全一样，它们是 Spring 提供的更明确的划分，使三层对象更加清晰
             
                 - @Controller  用于表现层
@@ -335,7 +335,7 @@
                     - 属性：
 
                         name : 用于指定 bean 的 id
-    
+                    
                     - 等同于@Autowired+@Qualifier
 
                 以上三个注入都只能注入其他 bean 类型的数据，而基本类型和 String 类型的数据无法使用上述注解实现。另外，集合类型的注入只能通过 xml 配置文件实现
@@ -345,7 +345,7 @@
                     - 属性：
 
                         value : 用于指定数据的值，它可以使用 Spring 中 Spel (即spring的el表达式)
-    
+                    
                         Spel 的写法：${表达式}
 
             3. 用于改变范围的
@@ -430,26 +430,30 @@
             
             ```
         
+
     }
             ```
         
-        - 配置bean.xml
+    ~~~xml
+    - 配置bean.xml
+    
+        ```java
+        <bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
+                <property name="name" value ="taylor"></property>
+                <property name="age" value="21"></property>
+                <property name="birthday" ref="now"></property>
+        </bean>
         
-            ```java
-            <bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
-                    <property name="name" value ="taylor"></property>
-                    <property name="age" value="21"></property>
-                    <property name="birthday" ref="now"></property>
-            </bean>
-            
-            ```
-        
-        <bean id = "now" class = "java.util.Date"></bean>
-            ```
-            
-        
+        ```
+    
+    <bean id = "now" class = "java.util.Date"></bean>
+        ```
+    ~~~
+
+
+​        
             测试类同上
-        
+    
     2. 复杂集合类型的注入方式
         - 用于给 List 结构集合注入的标签
             - list
@@ -458,11 +462,11 @@
         - 用于给map结构集合注入的标签
             - map
             - properties
-
+    
         结构相同，标签可以互换，因此开发中只要记住两组标签即可
-
+    
         编写实例：
-
+    
         ```java
         public class AccountServiceImpl implements IAccountService {
         
@@ -501,54 +505,56 @@
             }
         
         ```
-
+    
     }
         ```
-
-        配置如下：
-        
-        ```java
-        <bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
-                <!--以下三个标签是等价的，set未列出-->
-                <property name="myList">
-                    <list>
-                        <value>aaa</value>
+    
+    ~~~xml
+    配置如下：
+    
+    ```java
+    <bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
+            <!--以下三个标签是等价的，set未列出-->
+            <property name="myList">
+                <list>
+                    <value>aaa</value>
+                    <value>bbb</value>
+                </list>
+            </property>
+    
+            <property name="myStrs">
+                <array>
+                    <value>aaa</value>
+                    <value>bbbb</value>
+                </array>
+            </property>
+    
+            <property name="mySet">
+                <array>
+                    <value>aaa</value>
+                    <value>bbbb</value>
+                </array>
+            </property>
+    
+            <!--以下两种方式等价-->
+            <property name="myMap">
+                <map>
+                    <!--以下两种配置方式都可以-->
+                    <entry key="testA" value="aaa"></entry>
+                    <entry key="testA">
                         <value>bbb</value>
-                    </list>
-                </property>
-        
-                <property name="myStrs">
-                    <array>
-                        <value>aaa</value>
-                        <value>bbbb</value>
-                    </array>
-                </property>
-        
-                <property name="mySet">
-                    <array>
-                        <value>aaa</value>
-                        <value>bbbb</value>
-                    </array>
-                </property>
-        
-                <!--以下两种方式等价-->
-                <property name="myMap">
-                    <map>
-                        <!--以下两种配置方式都可以-->
-                        <entry key="testA" value="aaa"></entry>
-                        <entry key="testA">
-                            <value>bbb</value>
-                        </entry>
-                    </map>
-                </property>
-        
-                <property name="myProps">
-                    <props>
-                        <prop key="testB">bbb</prop>
-                    </props>
-                </property>
-            </bean>
-        ```
+                    </entry>
+                </map>
+            </property>
+    
+            <property name="myProps">
+                <props>
+                    <prop key="testB">bbb</prop>
+                </props>
+            </property>
+        </bean>
+    ```
+    ~~~
 
 4. 第一种：使用构造函数提供
 
@@ -592,29 +598,31 @@
 }
     ```
 
-    测试类：
-    
-    ```java
-    public static void main(String[] args) {
-            //1.获取核心容器对象
-            ApplicationContext ac = new ClassPathXmlApplicationContext("bean.xml");
-            //2.根据id获取Bean对象
-        IAccountService as  = (IAccountService)ac.getBean("accountService");
-            as.saveAccount();
-    }
-    ```
-    
-    配置如下：
-    
-    ```java
-    <bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
-            <constructor-arg name = "name" value="taylor"></constructor-arg>
-            <constructor-arg name = "age" value = "23"></constructor-arg>
-            <constructor-arg name = "birthday" ref = "now"></constructor-arg>
-        </bean>
-    
-        <bean id = "now" class = "java.util.Date"></bean>
-    ```
+~~~java
+测试类：
+
+```java
+public static void main(String[] args) {
+        //1.获取核心容器对象
+        ApplicationContext ac = new ClassPathXmlApplicationContext("bean.xml");
+        //2.根据id获取Bean对象
+    IAccountService as  = (IAccountService)ac.getBean("accountService");
+        as.saveAccount();
+}
+```
+
+配置如下：
+
+```java
+<bean id = "accountService" class = "com.itheima.service.impl.AccountServiceImpl">
+        <constructor-arg name = "name" value="taylor"></constructor-arg>
+        <constructor-arg name = "age" value = "23"></constructor-arg>
+        <constructor-arg name = "birthday" ref = "now"></constructor-arg>
+    </bean>
+
+    <bean id = "now" class = "java.util.Date"></bean>
+```
+~~~
 
 如上，AccountDaoImpl1 和 AccountDaoImpl2 实现接口 IAccountDao ，两个类中分别实现了不同的 saveAccount() 方法，AccountServiceImpl 实现接口 IAccountService ，其中调用了 IAccountDao 接口。AccountServiceImpl 通过注解关键字 Autowired 去 Spring 容器中寻找 accountDao ， 再根据 Qualifier 配置的 value 找到两个 dao 的实现类中与之相匹配的 Repository 的值。
 
@@ -1164,7 +1172,7 @@ public interface IAccountDao {
     ```
     
 - 消费者
-    
+  
     ```java
     /**
     
@@ -1198,4 +1206,36 @@ public interface IAccountDao {
 ## 八、AOP
 
 1. AOP概述
+
+   常用术语:通知、连接点、切点
+
+   ![image-20191119143547508](C:\Users\87360\AppData\Roaming\Typora\typora-user-images\image-20191119143547508.png)
+
+   * 通知
+
+     > 前置通知（Before）：在目标方法被调用之前调用通知功能；
+     > 后置通知（After）：在目标方法完成之后调用通知，此时不会关心方法的输出是什么；
+     > 返回通知（After-returning）：在目标方法成功执行之后调用通知；
+     > 异常通知（After-throwing）：在目标方法抛出异常后调用通知；
+     > 环绕通知（Around）：通知包裹了被通知的方法，在被通知的方法调用之前和调用之后执行自定义的行为
+
+    * 切面
+   
+      通知和切点的结合
+   
+2. AspectJ注解
+
+   | 注解            | 通知                                     |
+   | --------------- | ---------------------------------------- |
+   | @After          | 通知方法会在目标方法返回或抛出异常后调用 |
+   | @AfterReturning | 通知方法会在目标方法返回后调用           |
+   | @AfterThrowing  | 通知方法会在目标抛出异常后调用           |
+   | @Around         | 通知方法会在目标方法封装起来             |
+   | @Before         | 通知方法会在目标方法调用之前执行         |
+
+3. XML配置
+
+   ![image-20191119172454932](C:\Users\87360\AppData\Roaming\Typora\typora-user-images\image-20191119172454932.png)
+
+   ![image-20191119172514456](C:\Users\87360\AppData\Roaming\Typora\typora-user-images\image-20191119172514456.png)
 
