@@ -319,3 +319,35 @@
   ```
 
   
+
+## Vue
+
+* 实例化并且挂载
+
+  ```vue
+  let vue = new Vue({
+  el :'#app',
+  data:{
+  }
+  })
+  ```
+
+  
+
+* v-for
+
+  用于循环遍历`v-for="item in items"`
+  
+* v-on:click
+
+  用于绑定事件，可以通过`语法糖@click`进行简化
+  
+* 
+
+
+
+
+
+  
+
+  
